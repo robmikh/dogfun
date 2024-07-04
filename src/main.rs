@@ -1,6 +1,7 @@
 mod d2d;
 mod d3d11;
 mod imaging;
+mod effects;
 
 use d2d::{create_d2d_device, create_d2d_factory};
 use d3d11::create_d3d_device;
@@ -80,6 +81,7 @@ fn main() -> Result<()> {
     let blur_2_image: ID2D1Image = blur_2.cast()?;
     let subtract_effect = create_subtract_effect(&d2d_context, &blur_1_image, &blur_2_image)?;
     let subtract_image: ID2D1Image = subtract_effect.cast()?;
+
     let contrast_effect = create_contrast_effect(&d2d_context, &subtract_image, 0.1)?;
     let contrast_image: ID2D1Image = contrast_effect.cast()?;
     let invert_effect = create_invert_effect(&d2d_context, &contrast_image)?;
