@@ -10,17 +10,24 @@ use windows::{
         SoftwareBitmap,
     },
     Storage::{
-        CreationCollisionOption, FileAccessMode, StorageFolder,
-        Streams::{
-            IRandomAccessStream, InMemoryRandomAccessStream, InputStreamOptions, RandomAccessStream,
-        },
+        CreationCollisionOption, FileAccessMode, StorageFolder, Streams::IRandomAccessStream,
     },
     Win32::{
         Graphics::{
-            Direct2D::D2D1_DEVICE_CONTEXT_OPTIONS_NONE,
+            Direct2D::{
+                CLSID_D2D1Blend, CLSID_D2D1GaussianBlur,
+                Common::{
+                    D2D1_BLEND_MODE_SUBTRACT, D2D1_BORDER_MODE_HARD,
+                    D2D1_COMPOSITE_MODE_SOURCE_OVER,
+                },
+                ID2D1Bitmap, ID2D1DeviceContext, ID2D1Effect, ID2D1Image, D2D1_BLEND_PROP_MODE,
+                D2D1_DEVICE_CONTEXT_OPTIONS_NONE, D2D1_GAUSSIANBLUR_PROP_BORDER_MODE,
+                D2D1_GAUSSIANBLUR_PROP_STANDARD_DEVIATION, D2D1_INTERPOLATION_MODE_LINEAR,
+                D2D1_PROPERTY_TYPE_FLOAT, D2D1_PROPERTY_TYPE_UNKNOWN,
+            },
             Direct3D11::{
-                D3D11_BIND_SHADER_RESOURCE, D3D11_SUBRESOURCE_DATA, D3D11_TEXTURE2D_DESC,
-                D3D11_USAGE_DEFAULT,
+                D3D11_BIND_RENDER_TARGET, D3D11_BIND_SHADER_RESOURCE, D3D11_SUBRESOURCE_DATA,
+                D3D11_TEXTURE2D_DESC, D3D11_USAGE_DEFAULT,
             },
             Dxgi::{
                 Common::{DXGI_FORMAT_B8G8R8A8_UNORM, DXGI_SAMPLE_DESC},
@@ -32,7 +39,6 @@ use windows::{
             RO_INIT_MULTITHREADED,
         },
     },
-    UI::Composition::CompositionSurfaceBrush,
 };
 
 fn main() -> Result<()> {
@@ -125,8 +131,60 @@ fn main() -> Result<()> {
         unsafe { d2d_context.CreateBitmapFromDxgiSurface(&surface, None)? }
     };
 
-    // DEBUG: Use the input texture as our output texture
-    let output_texture = input_texture.clone();
+    // Create our output texture
+    let output_texture = {
+        let desc = D3D11_TEXTURE2D_DESC {
+            Width: width,
+            Height: height,
+            MipLevels: 1,
+            ArraySize: 1,
+            Format: DXGI_FORMAT_B8G8R8A8_UNORM,
+            SampleDesc: DXGI_SAMPLE_DESC {
+                Count: 1,
+                Quality: 0,
+            },
+            Usage: D3D11_USAGE_DEFAULT,
+            BindFlags: D3D11_BIND_SHADER_RESOURCE.0 as u32 | D3D11_BIND_RENDER_TARGET.0 as u32,
+            ..Default::default()
+        };
+
+        unsafe {
+            let mut texture = None;
+            d3d_device.CreateTexture2D(&desc, None, Some(&mut texture))?;
+            texture.unwrap()
+        }
+    };
+
+    // Create our output bitmap
+    let output_bitmap = {
+        let surface: IDXGISurface = output_texture.cast()?;
+        unsafe { d2d_context.CreateBitmapFromDxgiSurface(&surface, None)? }
+    };
+
+    // Setup our effect graph
+    unsafe {
+        d2d_context.SetTarget(&output_bitmap);
+    }
+    let blur_1 = create_gaussian_blur(&d2d_context, &input_bitmap, 3.0)?;
+    let blur_1_image: ID2D1Image = blur_1.cast()?;
+    let blur_2 = create_gaussian_blur(&d2d_context, &input_bitmap, 5.0)?;
+    let blur_2_image: ID2D1Image = blur_2.cast()?;
+    let subtract_effect = create_subtract_effect(&d2d_context, &blur_1_image, &blur_2_image)?;
+    let subtract_image: ID2D1Image = subtract_effect.cast()?;
+
+    // Draw
+    unsafe {
+        d2d_context.BeginDraw();
+        d2d_context.Clear(None);
+        d2d_context.DrawImage(
+            &subtract_image,
+            None,
+            None,
+            D2D1_INTERPOLATION_MODE_LINEAR,
+            D2D1_COMPOSITE_MODE_SOURCE_OVER,
+        );
+        d2d_context.EndDraw(None, None)?;
+    }
 
     // Save the output
     let output_surface = create_direct3d_surface(&output_texture)?;
@@ -155,4 +213,51 @@ fn main() -> Result<()> {
     println!("Done!");
 
     Ok(())
+}
+
+fn create_gaussian_blur(
+    d2d_context: &ID2D1DeviceContext,
+    input: &ID2D1Bitmap,
+    standard_deviation: f32,
+) -> Result<ID2D1Effect> {
+    let effect = unsafe { d2d_context.CreateEffect(&CLSID_D2D1GaussianBlur)? };
+
+    unsafe {
+        effect.SetInput(0, input, None);
+        let value = standard_deviation.to_le_bytes();
+        effect.SetValue(
+            D2D1_GAUSSIANBLUR_PROP_STANDARD_DEVIATION.0 as u32,
+            D2D1_PROPERTY_TYPE_FLOAT,
+            &value,
+        )?;
+        let value = D2D1_BORDER_MODE_HARD.0.to_le_bytes();
+        effect.SetValue(
+            D2D1_GAUSSIANBLUR_PROP_BORDER_MODE.0 as u32,
+            D2D1_PROPERTY_TYPE_UNKNOWN,
+            &value,
+        )?;
+    }
+
+    Ok(effect)
+}
+
+fn create_subtract_effect(
+    d2d_context: &ID2D1DeviceContext,
+    input_1: &ID2D1Image,
+    input_2: &ID2D1Image,
+) -> Result<ID2D1Effect> {
+    let effect = unsafe { d2d_context.CreateEffect(&CLSID_D2D1Blend)? };
+
+    unsafe {
+        effect.SetInput(0, input_1, None);
+        effect.SetInput(1, input_2, None);
+        let value = D2D1_BLEND_MODE_SUBTRACT.0.to_le_bytes();
+        effect.SetValue(
+            D2D1_BLEND_PROP_MODE.0 as u32,
+            D2D1_PROPERTY_TYPE_UNKNOWN,
+            &value,
+        )?;
+    }
+
+    Ok(effect)
 }
