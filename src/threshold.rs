@@ -119,6 +119,7 @@ impl ThresholdEffect {
                 compute_xy_thread_group_count(desc.Width, desc.Height, 16);
             d3d_context.Dispatch(thread_x_count, thread_y_count, 1);
             d3d_context.CSSetShaderResources(0, Some(&[None]));
+            d3d_context.CSSetConstantBuffers(0, Some(&[None]));
             d3d_context.CSSetUnorderedAccessViews(0, 1, Some(&[None] as *const _), None);
         }
 
