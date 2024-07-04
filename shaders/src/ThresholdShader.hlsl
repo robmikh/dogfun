@@ -29,24 +29,9 @@ void main( uint3 DTid : SV_DispatchThreadID )
     {
         float4 pixel = inputTexture[position];
 
-        //pixel.x = ApplyThreshold(pixel.x);
-        //pixel.y = ApplyThreshold(pixel.y);
-        //pixel.z = ApplyThreshold(pixel.z);
-
-        float4x4 grayscaleMatrix = 
-        {
-            0.299f, 0.299f, 0.299f, 0.0f,
-            0.587f, 0.587f, 0.587f, 0.0f,
-            0.114f, 0.114f, 0.114f, 0.0f,
-              0.0f,   0.0f,   0.0f, 1.0f,
-        };
-
-        float4 grayscalePixel = mul(pixel, grayscaleMatrix);
-        float thresholdedValue = ApplyThreshold(grayscalePixel.x);
-
-        pixel.x = thresholdedValue;
-        pixel.y = thresholdedValue;
-        pixel.z = thresholdedValue;
+        pixel.x = ApplyThreshold(pixel.x);
+        pixel.y = ApplyThreshold(pixel.y);
+        pixel.z = ApplyThreshold(pixel.z);
         pixel.w = 1.0f;
 
         outputTexture[position] = pixel;

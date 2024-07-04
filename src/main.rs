@@ -12,15 +12,10 @@ use windows::{
     Win32::{
         Graphics::{
             Direct2D::{
-                CLSID_D2D1Blend, CLSID_D2D1GaussianBlur,
-                Common::{
+                CLSID_D2D1Blend, CLSID_D2D1GaussianBlur, CLSID_D2D1Grayscale, Common::{
                     D2D1_BLEND_MODE_SUBTRACT, D2D1_BORDER_MODE_HARD,
                     D2D1_COMPOSITE_MODE_SOURCE_OVER,
-                },
-                ID2D1Bitmap, ID2D1DeviceContext, ID2D1Effect, ID2D1Image, D2D1_BLEND_PROP_MODE,
-                D2D1_DEVICE_CONTEXT_OPTIONS_NONE, D2D1_GAUSSIANBLUR_PROP_BORDER_MODE,
-                D2D1_GAUSSIANBLUR_PROP_STANDARD_DEVIATION, D2D1_INTERPOLATION_MODE_LINEAR,
-                D2D1_PROPERTY_TYPE_FLOAT, D2D1_PROPERTY_TYPE_UNKNOWN,
+                }, ID2D1Bitmap, ID2D1DeviceContext, ID2D1Effect, ID2D1Image, D2D1_BLEND_PROP_MODE, D2D1_DEVICE_CONTEXT_OPTIONS_NONE, D2D1_GAUSSIANBLUR_PROP_BORDER_MODE, D2D1_GAUSSIANBLUR_PROP_STANDARD_DEVIATION, D2D1_INTERPOLATION_MODE_LINEAR, D2D1_PROPERTY_TYPE_FLOAT, D2D1_PROPERTY_TYPE_UNKNOWN
             },
             Direct3D11::{
                 D3D11_BIND_RENDER_TARGET, D3D11_BIND_SHADER_RESOURCE, D3D11_TEXTURE2D_DESC,
@@ -113,11 +108,13 @@ fn main() -> Result<()> {
         let surface: IDXGISurface = threshold_result_texture.cast()?;
         unsafe { d2d_context.CreateBitmapFromDxgiSurface(&surface, None)? }
     };
+    let grayscale = create_grayscale(&d2d_context, &threshold_bitmap)?;
+    let grayscale_image: ID2D1Image = grayscale.cast()?;
     unsafe {
         d2d_context.BeginDraw();
         d2d_context.Clear(None);
         d2d_context.DrawImage(
-            &threshold_bitmap,
+            &grayscale_image,
             None,
             None,
             D2D1_INTERPOLATION_MODE_LINEAR,
@@ -176,6 +173,19 @@ fn create_subtract_effect(
             D2D1_PROPERTY_TYPE_UNKNOWN,
             &value,
         )?;
+    }
+
+    Ok(effect)
+}
+
+fn create_grayscale(
+    d2d_context: &ID2D1DeviceContext,
+    input: &ID2D1Bitmap,
+) -> Result<ID2D1Effect> {
+    let effect = unsafe { d2d_context.CreateEffect(&CLSID_D2D1Grayscale)? };
+
+    unsafe {
+        effect.SetInput(0, input, None);
     }
 
     Ok(effect)
