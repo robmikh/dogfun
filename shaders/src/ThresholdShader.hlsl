@@ -16,14 +16,16 @@ float ApplyThreshold(float value)
     return 0;
 }
 
-[numthreads(16, 16, 1)]
+[numthreads(64, 1, 1)]
 void main( uint3 DTid : SV_DispatchThreadID )
 {
-    uint2 position = DTid.xy;
-
     uint width;
     uint height;
     inputTexture.GetDimensions(width, height);
+ 
+    uint2 position;
+    position.x = DTid.x % width;
+    position.y = DTid.x / width;
 
     if (position.x < width && position.y < height)
     {

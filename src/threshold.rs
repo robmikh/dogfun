@@ -115,9 +115,8 @@ impl ThresholdEffect {
                 None,
             );
 
-            let (thread_x_count, thread_y_count) =
-                compute_xy_thread_group_count(desc.Width, desc.Height, 16);
-            d3d_context.Dispatch(thread_x_count, thread_y_count, 1);
+            let thread_count = compute_thread_group_count(desc.Width * desc.Height, 64);
+            d3d_context.Dispatch(thread_count, 1, 1);
             d3d_context.CSSetShaderResources(0, Some(&[None]));
             d3d_context.CSSetConstantBuffers(0, Some(&[None]));
             d3d_context.CSSetUnorderedAccessViews(0, 1, Some(&[None] as *const _), None);
@@ -160,17 +159,6 @@ impl ThresholdEffect {
 
         Ok((texture, uav))
     }
-}
-
-fn compute_xy_thread_group_count(
-    width: u32,
-    height: u32,
-    num_threads_per_dimension: u32,
-) -> (u32, u32) {
-    (
-        compute_thread_group_count(width, num_threads_per_dimension),
-        compute_thread_group_count(height, num_threads_per_dimension),
-    )
 }
 
 fn compute_thread_group_count(value: u32, threads: u32) -> u32 {
