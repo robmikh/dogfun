@@ -8,24 +8,18 @@ use imaging::{create_texture_from_bitmap, load_bitmap_from_path, save_texture_to
 use windows::{
     core::{Interface, Result},
     Win32::{
-        Graphics::{
+        Foundation::TRUE, Graphics::{
             Direct2D::{
-                CLSID_D2D1Blend, CLSID_D2D1GaussianBlur,
-                Common::{
+                CLSID_D2D1Blend, CLSID_D2D1Contrast, CLSID_D2D1GaussianBlur, CLSID_D2D1Invert, Common::{
                     D2D1_BLEND_MODE_SUBTRACT, D2D1_BORDER_MODE_HARD,
                     D2D1_COMPOSITE_MODE_SOURCE_OVER,
-                },
-                ID2D1Bitmap, ID2D1DeviceContext, ID2D1Effect, ID2D1Image, D2D1_BLEND_PROP_MODE,
-                D2D1_DEVICE_CONTEXT_OPTIONS_NONE, D2D1_GAUSSIANBLUR_PROP_BORDER_MODE,
-                D2D1_GAUSSIANBLUR_PROP_STANDARD_DEVIATION, D2D1_INTERPOLATION_MODE_LINEAR,
-                D2D1_PROPERTY_TYPE_FLOAT, D2D1_PROPERTY_TYPE_UNKNOWN,
+                }, ID2D1Bitmap, ID2D1DeviceContext, ID2D1Effect, ID2D1Image, D2D1_BLEND_PROP_MODE, D2D1_CONTRAST_PROP_CLAMP_INPUT, D2D1_CONTRAST_PROP_CONTRAST, D2D1_DEVICE_CONTEXT_OPTIONS_NONE, D2D1_GAUSSIANBLUR_PROP_BORDER_MODE, D2D1_GAUSSIANBLUR_PROP_STANDARD_DEVIATION, D2D1_INTERPOLATION_MODE_LINEAR, D2D1_PROPERTY_TYPE_BOOL, D2D1_PROPERTY_TYPE_FLOAT, D2D1_PROPERTY_TYPE_UNKNOWN
             },
             Direct3D11::{
                 D3D11_BIND_RENDER_TARGET, D3D11_BIND_SHADER_RESOURCE, D3D11_TEXTURE2D_DESC,
             },
             Dxgi::IDXGISurface,
-        },
-        System::WinRT::{RoInitialize, RO_INIT_MULTITHREADED},
+        }, System::WinRT::{RoInitialize, RO_INIT_MULTITHREADED}
     },
 };
 
@@ -86,13 +80,17 @@ fn main() -> Result<()> {
     let blur_2_image: ID2D1Image = blur_2.cast()?;
     let subtract_effect = create_subtract_effect(&d2d_context, &blur_1_image, &blur_2_image)?;
     let subtract_image: ID2D1Image = subtract_effect.cast()?;
+    let contrast_effect = create_contrast_effect(&d2d_context, &subtract_image, 0.1)?;
+    let contrast_image: ID2D1Image = contrast_effect.cast()?;
+    let invert_effect = create_invert_effect(&d2d_context, &contrast_image)?;
+    let invert_image: ID2D1Image = invert_effect.cast()?;
 
     // Draw
     unsafe {
         d2d_context.BeginDraw();
         d2d_context.Clear(None);
         d2d_context.DrawImage(
-            &subtract_image,
+            &contrast_image,
             None,
             None,
             D2D1_INTERPOLATION_MODE_LINEAR,
@@ -151,6 +149,37 @@ fn create_subtract_effect(
             D2D1_PROPERTY_TYPE_UNKNOWN,
             &value,
         )?;
+    }
+
+    Ok(effect)
+}
+
+fn create_invert_effect(
+    d2d_context: &ID2D1DeviceContext,
+    input: &ID2D1Image
+) -> Result<ID2D1Effect> {
+    let effect = unsafe { d2d_context.CreateEffect(&CLSID_D2D1Invert)? };
+
+    unsafe {
+        effect.SetInput(0, input, None);
+    }
+
+    Ok(effect)
+}
+
+fn create_contrast_effect(
+    d2d_context: &ID2D1DeviceContext,
+    input: &ID2D1Image,
+    contrast: f32,
+) -> Result<ID2D1Effect> {
+    let effect = unsafe { d2d_context.CreateEffect(&CLSID_D2D1Contrast)? };
+
+    unsafe {
+        effect.SetInput(0, input, None);
+        let value = contrast.to_le_bytes();
+        effect.SetValue(D2D1_CONTRAST_PROP_CONTRAST.0 as u32, D2D1_PROPERTY_TYPE_FLOAT, &value)?;
+        let value = TRUE.0.to_le_bytes();
+        effect.SetValue(D2D1_CONTRAST_PROP_CLAMP_INPUT.0 as u32, D2D1_PROPERTY_TYPE_BOOL, &value)?;
     }
 
     Ok(effect)
