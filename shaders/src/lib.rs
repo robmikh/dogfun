@@ -1,3 +1,3 @@
-pub fn threshold_shader() -> &'static [u8] {
-    include_bytes!(concat!(env!("OUT_DIR"), "/shaders/ThresholdShader.cso"))
+pub fn threshold_pixel_shader() -> &'static [u8] {
+    include_bytes!(concat!(env!("OUT_DIR"), "/shaders/ThresholdPixelShader.cso"))
 }
