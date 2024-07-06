@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+shaders = { path = "shaders" }
 # For implement
 windows-core = "0.58.0"
 

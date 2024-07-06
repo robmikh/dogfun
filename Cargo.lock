@@ -6,6 +6,7 @@ version = 3
 name = "dogfun"
 version = "0.1.0"
 dependencies = [
+ "shaders",
  "windows",
  "windows-core",
 ]
@@ -27,6 +28,10 @@ checksum = "0fa76aaf39101c457836aec0ce2316dbdc3ab723cdda1c6bd4e6ad4208acaca7"
 dependencies = [
  "proc-macro2",
 ]
+
+[[package]]
+name = "shaders"
+version = "0.1.0"
 
 [[package]]
 name = "syn"
