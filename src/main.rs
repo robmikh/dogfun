@@ -1,11 +1,12 @@
 mod d2d;
 mod d3d11;
-mod imaging;
 mod effects;
+mod imaging;
 mod threshold;
 
 use d2d::{create_d2d_device, create_d2d_factory};
 use d3d11::create_d3d_device;
+use effects::custom::SampleEffect;
 use imaging::{create_texture_from_bitmap, load_bitmap_from_path, save_texture_to_path};
 use threshold::ThresholdEffect;
 use windows::{
@@ -46,6 +47,9 @@ fn main() -> Result<()> {
     let d2d_factory = create_d2d_factory()?;
     let d2d_device = create_d2d_device(&d2d_factory, &d3d_device)?;
     let d2d_context = unsafe { d2d_device.CreateDeviceContext(D2D1_DEVICE_CONTEXT_OPTIONS_NONE)? };
+
+    // Register custom effects
+    SampleEffect::register(&d2d_factory)?;
 
     // Load and decode the input image
     let software_bitmap = load_bitmap_from_path(&image_path)?;
