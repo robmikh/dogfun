@@ -108,30 +108,6 @@ fn main() -> Result<()> {
         d2d_context.EndDraw(None, None)?;
     }
 
-    // Apply the threshold
-    // TODO: Use D2D custom compute effect
-    //let threshold_effect = ThresholdEffect::new(&d3d_device)?;
-    //let threshold_result_texture =
-    //    threshold_effect.run(&d3d_device, &d3d_context, &output_texture, 0.01)?;
-    //let threshold_bitmap = {
-    //    let surface: IDXGISurface = threshold_result_texture.cast()?;
-    //    unsafe { d2d_context.CreateBitmapFromDxgiSurface(&surface, None)? }
-    //};
-    //let grayscale = create_grayscale(&d2d_context, &threshold_bitmap)?;
-    //let grayscale_image: ID2D1Image = grayscale.cast()?;
-    //unsafe {
-    //    d2d_context.BeginDraw();
-    //    d2d_context.Clear(None);
-    //    d2d_context.DrawImage(
-    //        &grayscale_image,
-    //        None,
-    //        None,
-    //        D2D1_INTERPOLATION_MODE_LINEAR,
-    //        D2D1_COMPOSITE_MODE_SOURCE_OVER,
-    //    );
-    //    d2d_context.EndDraw(None, None)?;
-    //}
-
     // Save the output
     save_texture_to_path(&output_texture, "dog.png")?;
 
